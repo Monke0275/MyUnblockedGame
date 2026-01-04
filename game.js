@@ -1,53 +1,59 @@
 window.addEventListener("DOMContentLoaded", () => {
 
-    // ----- CANVAS -----
+    // ------------------ CANVAS SETUP ------------------
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Function to resize canvas
+    // Function to resize canvas to full window
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-
-        // Optional: keep player and enemy inside new canvas
-        if (player.x + player.size > canvas.width) player.x = canvas.width - player.size;
-        if (player.y + player.size > canvas.height) player.y = canvas.height - player.size;
-        if (enemy.x + enemy.size > canvas.width) enemy.x = canvas.width - enemy.size;
-        if (enemy.y + enemy.size > canvas.height) enemy.y = canvas.height - enemy.size;
     }
-
-    // Call once at start
     resizeCanvas();
-
-    // Listen for window resize
     window.addEventListener("resize", resizeCanvas);
 
-    // ----- PLAYER -----
-    let player = {
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        size: 40,
-        speed: 7,
-        oldX: canvas.width / 2,
-        oldY: canvas.height / 2
-    };
-
-    // ----- ENEMY -----
-    let enemy = {
-        x: 100,
-        y: 100,
-        size: 40,
-        speed: 3
-    };
-
-    // ----- KEYS -----
+    // ------------------ GAME VARIABLES ------------------
+    let player = { x: 0, y: 0, size: 40, speed: 7, oldX: 0, oldY: 0 };
+    let enemy = { x: 100, y: 100, size: 40, speed: 3 };
     let keys = {};
+
+    let gameState = "home"; // can be "home", "playing", "gameover"
+    let startTime = 0;      // for timer
+    let elapsed = 0;
+
+    // ------------------ KEYBOARD INPUT ------------------
     document.addEventListener("keydown", e => { keys[e.key] = true; });
     document.addEventListener("keyup", e => { keys[e.key] = false; });
 
-    // ----- UPDATE GAME STATE -----
+    // ------------------ GAME FUNCTIONS ------------------
+
+    // Start the game
+    function startGame() {
+        // Set player in center
+        player.x = canvas.width / 2 - player.size / 2;
+        player.y = canvas.height / 2 - player.size / 2;
+        player.oldX = player.x;
+        player.oldY = player.y;
+
+        // Reset enemy position
+        enemy.x = Math.random() * (canvas.width - enemy.size);
+        enemy.y = Math.random() * (canvas.height - enemy.size);
+        enemy.speed = 3;
+
+        startTime = performance.now();
+        gameState = "playing";
+    }
+
+    // Restart game after Game Over
+    function restartGame() {
+        startGame();
+    }
+
+    // Update game state
     function update() {
-        // Player movement
+        if (gameState !== "playing") return;
+
+        // ---- PLAYER MOVEMENT ----
         if (keys["w"] || keys["ArrowUp"]) player.y -= player.speed;
         if (keys["s"] || keys["ArrowDown"]) player.y += player.speed;
         if (keys["a"] || keys["ArrowLeft"]) player.x -= player.speed;
@@ -59,7 +65,7 @@ window.addEventListener("DOMContentLoaded", () => {
         if (player.x + player.size > canvas.width) player.x = canvas.width - player.size;
         if (player.y + player.size > canvas.height) player.y = canvas.height - player.size;
 
-        // Predictive enemy AI
+        // ---- PREDICTIVE ENEMY AI ----
         let predictedX = player.x + (player.x - player.oldX);
         let predictedY = player.y + (player.y - player.oldY);
 
@@ -72,30 +78,132 @@ window.addEventListener("DOMContentLoaded", () => {
         player.oldX = player.x;
         player.oldY = player.y;
 
-        // Enemy speed increases over time
-        enemy.speed = 3 + Math.floor(performance.now() / 10000);
+        // Increase enemy speed over time
+        enemy.speed = 3 + Math.floor((performance.now() - startTime) / 10000);
+
+        // ---- COLLISION CHECK ----
+        if (
+            player.x < enemy.x + enemy.size &&
+            player.x + player.size > enemy.x &&
+            player.y < enemy.y + enemy.size &&
+            player.y + player.size > enemy.y
+        ) {
+            gameState = "gameover";
+            elapsed = Math.floor((performance.now() - startTime) / 1000);
+        }
     }
 
-    // ----- DRAW EVERYTHING -----
+    // Draw everything
     function draw() {
+        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw player
+        if (gameState === "home") {
+            drawHomeScreen();
+        } else if (gameState === "playing") {
+            drawGameplay();
+        } else if (gameState === "gameover") {
+            drawGameOver();
+        }
+    }
+
+    // ------------------ DRAW SCREENS ------------------
+
+    // Home Screen
+    function drawHomeScreen() {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "cyan";
+        ctx.font = "80px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("UNBEATABLE GAME", canvas.width / 2, canvas.height / 2 - 100);
+
+        // Start button
+        ctx.fillStyle = "lime";
+        ctx.fillRect(canvas.width / 2 - 150, canvas.height / 2, 300, 100);
+        ctx.fillStyle = "#000";
+        ctx.font = "50px Arial";
+        ctx.fillText("START", canvas.width / 2, canvas.height / 2 + 65);
+    }
+
+    // Gameplay
+    function drawGameplay() {
+        // Player
         ctx.fillStyle = "blue";
         ctx.fillRect(player.x, player.y, player.size, player.size);
 
-        // Draw enemy
+        // Enemy
         ctx.fillStyle = "red";
         ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+
+        // Timer
+        let currentTime = Math.floor((performance.now() - startTime) / 1000);
+        ctx.fillStyle = "white";
+        ctx.font = "30px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText("Time: " + currentTime + "s", 20, 40);
     }
 
-    // ----- GAME LOOP -----
+    // Game Over Screen
+    function drawGameOver() {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "yellow";
+        ctx.font = "80px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 100);
+
+        ctx.fillStyle = "white";
+        ctx.font = "50px Arial";
+        ctx.fillText("Time Survived: " + elapsed + "s", canvas.width / 2, canvas.height / 2);
+
+        // Restart button
+        ctx.fillStyle = "lime";
+        ctx.fillRect(canvas.width / 2 - 150, canvas.height / 2 + 80, 300, 100);
+        ctx.fillStyle = "#000";
+        ctx.font = "50px Arial";
+        ctx.fillText("RESTART", canvas.width / 2, canvas.height / 2 + 145);
+    }
+
+    // ------------------ MOUSE CLICK FOR BUTTONS ------------------
+    canvas.addEventListener("click", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        if (gameState === "home") {
+            // Check if start button clicked
+            if (
+                mouseX >= canvas.width / 2 - 150 &&
+                mouseX <= canvas.width / 2 + 150 &&
+                mouseY >= canvas.height / 2 &&
+                mouseY <= canvas.height / 2 + 100
+            ) {
+                startGame();
+            }
+        }
+
+        if (gameState === "gameover") {
+            // Check if restart button clicked
+            if (
+                mouseX >= canvas.width / 2 - 150 &&
+                mouseX <= canvas.width / 2 + 150 &&
+                mouseY >= canvas.height / 2 + 80 &&
+                mouseY <= canvas.height / 2 + 180
+            ) {
+                restartGame();
+            }
+        }
+    });
+
+    // ------------------ GAME LOOP ------------------
     function gameLoop() {
         update();
         draw();
         requestAnimationFrame(gameLoop);
     }
 
-    // Start the game
     gameLoop();
 });
