@@ -139,7 +139,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
         // Timer
         let currentTime = Math.floor((performance.now() - startTime) / 1000);
-        ctx.fillStyle = "white";
+        ctx.fillStyle = "Black";
         ctx.font = "30px Arial";
         ctx.textAlign = "left";
         ctx.fillText("Time: " + currentTime + "s", 20, 40);
@@ -207,3 +207,4 @@ window.addEventListener("DOMContentLoaded", () => {
 
     gameLoop();
 });
+
