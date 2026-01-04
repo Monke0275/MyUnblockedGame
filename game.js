@@ -1,17 +1,32 @@
-// Wait until the page loads
 window.addEventListener("DOMContentLoaded", () => {
 
     // ----- CANVAS -----
     const canvas = document.getElementById("gameCanvas");
-    canvas.width = window.innerWidth;   // full width of the browser window
-    canvas.height = window.innerHeight; // full height of the browser window
     const ctx = canvas.getContext("2d");
+
+    // Function to resize canvas
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Optional: keep player and enemy inside new canvas
+        if (player.x + player.size > canvas.width) player.x = canvas.width - player.size;
+        if (player.y + player.size > canvas.height) player.y = canvas.height - player.size;
+        if (enemy.x + enemy.size > canvas.width) enemy.x = canvas.width - enemy.size;
+        if (enemy.y + enemy.size > canvas.height) enemy.y = canvas.height - enemy.size;
+    }
+
+    // Call once at start
+    resizeCanvas();
+
+    // Listen for window resize
+    window.addEventListener("resize", resizeCanvas);
 
     // ----- PLAYER -----
     let player = {
         x: canvas.width / 2,
         y: canvas.height / 2,
-        size: 40,   // bigger player for full-screen
+        size: 40,
         speed: 7,
         oldX: canvas.width / 2,
         oldY: canvas.height / 2
@@ -58,7 +73,7 @@ window.addEventListener("DOMContentLoaded", () => {
         player.oldY = player.y;
 
         // Enemy speed increases over time
-        enemy.speed = 3 + Math.floor(performance.now() / 10000); // slightly slower speed ramp
+        enemy.speed = 3 + Math.floor(performance.now() / 10000);
     }
 
     // ----- DRAW EVERYTHING -----
