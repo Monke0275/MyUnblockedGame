@@ -1,78 +1,87 @@
-// Player
-let player = { x: 250, y: 250, size: 20, speed: 5 };
+// Wait until the HTML is fully loaded
+window.addEventListener("DOMContentLoaded", () => {
 
-// Enemy (Ai)
-let enemy = {x: 100, y: 100, size: 20, speed: 2};
+    // ----- PLAYER -----
+    let player = {
+        x: 250,
+        y: 250,
+        size: 20,
+        speed: 5,
+        oldX: 250,
+        oldY: 250
+    };
 
-// Key pressed
-let keys = {};
+    // ----- ENEMY (AI) -----
+    let enemy = {
+        x: 100,
+        y: 100,
+        size: 20,
+        speed: 2
+    };
 
-// Listen to keyboard
-document.addEventListener("keydown", (e) => { keys[e.key] = true; });
-document.addEventListener("keyup", (e) => { keys[e.key] = false; });
+    // ----- KEYS -----
+    let keys = {};
 
-// Update game state
-function update() {
-// Move player
-if (keys["w"]) player.y -= player.speed;
-if (keys["ArrowUp"]) player.y -= player.speed;
+    document.addEventListener("keydown", function(e) { keys[e.key] = true; });
+    document.addEventListener("keyup", function(e) { keys[e.key] = false; });
 
-if (keys["s"] ) player.y += player.speed;
-if (keys["Arrow Down"] ) player.y += player.speed;
+    // ----- UPDATE GAME STATE -----
+    function update() {
+        // Player movement
+        if (keys["w"]) player.y -= player.speed;
+        if (keys["ArrowUp"]) player.y -= player.speed;
 
-if (keys["a"] ) player.x -= player.speed;
-if (keys["ArrowLeft"] ) player.x -= player.speed;
+        if (keys["s"]) player.y += player.speed;
+        if (keys["ArrowDown"]) player.y += player.speed;
 
-if (keys["d"] ) player.y += player.speed;
-if (keys["ArrowRight"] ) player.x += player.speed;
+        if (keys["a"]) player.x -= player.speed;
+        if (keys["ArrowLeft"]) player.x -= player.speed;
 
-// Enemy Ai follows player
-if (player.x > enemy.x) enemy.x += enemy.speed;
-if (player.x < enemy.x) enemy.x -= enemy.speed;
+        if (keys["d"]) player.x += player.speed;
+        if (keys["ArrowRight"]) player.x += player.speed;
 
-if (player.x < enemy.x) enemy.x += enemy.speed;
-if (player.x > enemy.x) enemy.x -= enemy.speed;
-}
+        // Predictive enemy AI
+        let predictedX = player.x + (player.x - player.oldX);
+        let predictedY = player.y + (player.y - player.oldY);
 
-// Draw everything
-function draw() {
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2D");
+        if (predictedX > enemy.x) enemy.x += enemy.speed;
+        if (predictedX < enemy.x) enemy.x -= enemy.speed;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // clear Screen
+        if (predictedY > enemy.y) enemy.y += enemy.speed;
+        if (predictedY < enemy.y) enemy.y -= enemy.speed;
 
-    // Draw player
-    ctx.fillStyle= "blue";
-    ctx.fillRect(player.x, player.y, player.size, player.size);
+        // Save old player position for next frame
+        player.oldX = player.x;
+        player.oldY = player.y;
 
-    // Draw Enemy
-    ctx.fillStyle = "red";
-    ctxfillRect(enemy.x, enemy.y, enemy.size, enemy.size);
-}
+        // Enemy speed increases over time
+        enemy.speed = 2 + Math.floor(performance.now() / 5000);
+    }
 
-// Game loop
-function gameLoop() {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
-}
+    // ----- DRAW EVERYTHING -----
+    function draw() {
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
 
-// Start the game
-gameLoop();
+        // Clear screen
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-// inside update() where enemy moves
-let predictedX = player.x + (player.x - player.oldX);
-let predictedY = player.y + (player.y - player.oldY);
+        // Draw player
+        ctx.fillStyle = "blue";
+        ctx.fillRect(player.x, player.y, player.size, player.size);
 
-if (predictedX > enemy.x) enemy.x += enemy.speed;
-if (predictedX < enemy.x) enemy.x -= enemy.speed;
+        // Draw enemy
+        ctx.fillStyle = "red";
+        ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+    }
 
-if (predictedY > enemy.y) enemy.y += enemy.speed;
-if (predictedY > enemy.y) enemy.y += enemy.speed;
+    // ----- GAME LOOP -----
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
 
-//Save old player position for next frame
-player.oldX = player.x;
-player.oldY = player.x;
-
-//inside update() or at the end of gameLoop
-enemy.speed = 2 + Math.floor(performance.now() / 5000); // enemy gets faster every 5 seconds
+    // Start the game
+    gameLoop();
+});
