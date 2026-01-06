@@ -4,7 +4,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Function to resize canvas to full window
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -13,81 +12,88 @@ window.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("resize", resizeCanvas);
 
     // ------------------ GAME VARIABLES ------------------
-    let dashCooldown = 0;      // time before you can dash again
-    let dashDuration = 0;     // how long the dash lasts
-    let DASH_SPEED = 20;      // how fast the dash is
-    let DASH_TIME = 10;       // frames dash lasts
-    let DASH_COOLDOWN = 60;   // frames before next dash
+    let dashCooldown = 0;
+    let dashDuration = 0;
+    const DASH_SPEED = 20;
+    const DASH_TIME = 10;
+    const DASH_COOLDOWN = 60;
+    const FRICTION = 0.85; // smooth momentum
 
     let player = {
-    x: 0,
-    y: 0,
-    size: 40,
-    speed: 1.2,   // acceleration, not raw speed
-    vx: 0,        // velocity X
-    vy: 0,        // velocity Y
-    oldX: 0,
-    oldY: 0
-};
+        x: 0,
+        y: 0,
+        size: 40,
+        speed: 1.2,
+        vx: 0,
+        vy: 0,
+        oldX: 0,
+        oldY: 0
+    };
 
     let enemy = { x: 100, y: 100, size: 40, speed: 3 };
     let keys = {};
-
-    let gameState = "home"; // can be "home", "playing", "gameover"
-    let startTime = 0;      // for timer
+    let gameState = "home"; // "home", "playing", "gameover"
+    let startTime = 0;
     let elapsed = 0;
+    let secondsAlive = 0;
 
     // ------------------ KEYBOARD INPUT ------------------
-    document.addEventListener("keydown", e => { keys[e.key] = true; });
-    document.addEventListener("keyup", e => { keys[e.key] = false; });
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
 
     // ------------------ GAME FUNCTIONS ------------------
-
-    // Start the game
     function startGame() {
-        // Set player in center
         player.x = canvas.width / 2 - player.size / 2;
         player.y = canvas.height / 2 - player.size / 2;
         player.oldX = player.x;
         player.oldY = player.y;
+        player.vx = 0;
+        player.vy = 0;
 
-        // Reset enemy position
         enemy.x = Math.random() * (canvas.width - enemy.size);
         enemy.y = Math.random() * (canvas.height - enemy.size);
         enemy.speed = 3;
 
         startTime = performance.now();
+        secondsAlive = 0;
+        dashCooldown = 0;
+        dashDuration = 0;
+
         gameState = "playing";
     }
 
-    // Restart game after Game Over
     function restartGame() {
         startGame();
     }
 
-    // Update game state
     function update() {
         if (gameState !== "playing") return;
 
-        // ---- PLAYER MOVEMENT ----
+        // ---- TIMER ----
+        secondsAlive = (performance.now() - startTime) / 1000;
+
+        // ---- DASH ----
         let currentSpeed = player.speed;
+        if (dashDuration > 0) {
+            currentSpeed = DASH_SPEED;
+            dashDuration--;
+        }
+        if (dashCooldown > 0) dashCooldown--;
 
-// Dash active?
-if (dashDuration > 0) {
-    currentSpeed = DASH_SPEED;
-    dashDuration--;
-}
+        // ---- PLAYER MOVEMENT ----
+        // Apply acceleration
+        if (keys["w"] || keys["ArrowUp"]) player.vy -= currentSpeed;
+        if (keys["s"] || keys["ArrowDown"]) player.vy += currentSpeed;
+        if (keys["a"] || keys["ArrowLeft"]) player.vx -= currentSpeed;
+        if (keys["d"] || keys["ArrowRight"]) player.vx += currentSpeed;
 
-// Dash cooldown
-if (dashCooldown > 0) {
-    dashCooldown--;
-}
+        // Apply friction for momentum
+        player.vx *= FRICTION;
+        player.vy *= FRICTION;
 
-// Movement
-if (keys["w"] || keys["ArrowUp"]) player.y -= currentSpeed;
-if (keys["s"] || keys["ArrowDown"]) player.y += currentSpeed;
-if (keys["a"] || keys["ArrowLeft"]) player.x -= currentSpeed;
-if (keys["d"] || keys["ArrowRight"]) player.x += currentSpeed;
+        // Update position
+        player.x += player.vx;
+        player.y += player.vy;
 
         // Keep player inside canvas
         if (player.x < 0) player.x = 0;
@@ -104,19 +110,14 @@ if (keys["d"] || keys["ArrowRight"]) player.x += currentSpeed;
         if (predictedY > enemy.y) enemy.y += enemy.speed;
         if (predictedY < enemy.y) enemy.y -= enemy.speed;
 
-        // Save old player position
         player.oldX = player.x;
         player.oldY = player.y;
 
-        let secondsAlive = (performance.now() - startTime) / 1000;
+        // ---- ENEMY SPEED RAMP ----
+        enemy.speed = 3 + secondsAlive * 0.15;
+        if (enemy.speed > 15) enemy.speed = 15;
 
-// Speed ramps up faster over time
-enemy.speed = 3 + secondsAlive * 0.15;
-
-// HARD CAP so it doesn’t break the game
-if (enemy.speed > 15) enemy.speed = 15;
-
-        // ---- COLLISION CHECK ----
+        // ---- COLLISION ----
         if (
             player.x < enemy.x + enemy.size &&
             player.x + player.size > enemy.x &&
@@ -124,27 +125,19 @@ if (enemy.speed > 15) enemy.speed = 15;
             player.y + player.size > enemy.y
         ) {
             gameState = "gameover";
-            elapsed = Math.floor((performance.now() - startTime) / 1000);
+            elapsed = Math.floor(secondsAlive);
         }
     }
 
-    // Draw everything
+    // ------------------ DRAW FUNCTIONS ------------------
     function draw() {
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (gameState === "home") {
-            drawHomeScreen();
-        } else if (gameState === "playing") {
-            drawGameplay();
-        } else if (gameState === "gameover") {
-            drawGameOver();
-        }
+        if (gameState === "home") drawHomeScreen();
+        else if (gameState === "playing") drawGameplay();
+        else if (gameState === "gameover") drawGameOver();
     }
 
-    // ------------------ DRAW SCREENS ------------------
-
-    // Home Screen
     function drawHomeScreen() {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -162,39 +155,30 @@ if (enemy.speed > 15) enemy.speed = 15;
         ctx.fillText("START", canvas.width / 2, canvas.height / 2 + 65);
     }
 
-    // Gameplay
     function drawGameplay() {
-        // Player (glowing)
-ctx.save();
-ctx.shadowColor = "cyan";
-ctx.shadowBlur = 20;
-ctx.fillStyle = "#00aaff";
-ctx.fillRect(player.x, player.y, player.size, player.size);
-ctx.restore();
+        // Player with glow
+        ctx.save();
+        ctx.shadowColor = "cyan";
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = "#00aaff";
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+        ctx.restore();
 
-        // Enemy (danger glow)
-ctx.save();
-ctx.shadowColor = "red";
-ctx.shadowBlur = 30;
-ctx.fillStyle = "#ff3333";
-ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
-ctx.restore();
+        // Enemy with glow
+        ctx.save();
+        ctx.shadowColor = "red";
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = "#ff3333";
+        ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+        ctx.restore();
 
-        let currentTime = Math.floor(secondsAlive);
-
-if (enemy.speed > 10) {
-    ctx.fillStyle = "red";   // danger!
-} else {
-    ctx.fillStyle = "black";
-}
-
-ctx.font = "bold 32px Arial";
-ctx.textAlign = "left";
-ctx.fillText("Time: " + currentTime + "s", 20, 45);
-
+        // Timer
+        ctx.fillStyle = "white";
+        ctx.font = "bold 32px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText("Time: " + Math.floor(secondsAlive) + "s", 20, 45);
     }
 
-    // Game Over Screen
     function drawGameOver() {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -216,14 +200,13 @@ ctx.fillText("Time: " + currentTime + "s", 20, 45);
         ctx.fillText("RESTART", canvas.width / 2, canvas.height / 2 + 145);
     }
 
-    // ------------------ MOUSE CLICK FOR BUTTONS ------------------
+    // ------------------ MOUSE INPUT ------------------
     canvas.addEventListener("click", (e) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
         if (gameState === "home") {
-            // Check if start button clicked
             if (
                 mouseX >= canvas.width / 2 - 150 &&
                 mouseX <= canvas.width / 2 + 150 &&
@@ -235,7 +218,6 @@ ctx.fillText("Time: " + currentTime + "s", 20, 45);
         }
 
         if (gameState === "gameover") {
-            // Check if restart button clicked
             if (
                 mouseX >= canvas.width / 2 - 150 &&
                 mouseX <= canvas.width / 2 + 150 &&
@@ -244,6 +226,14 @@ ctx.fillText("Time: " + currentTime + "s", 20, 45);
             ) {
                 restartGame();
             }
+        }
+    });
+
+    // ------------------ DASH INPUT ------------------
+    document.addEventListener("keydown", (e) => {
+        if (e.key === " " && dashCooldown === 0 && gameState === "playing") {
+            dashDuration = DASH_TIME;
+            dashCooldown = DASH_COOLDOWN;
         }
     });
 
@@ -256,5 +246,3 @@ ctx.fillText("Time: " + currentTime + "s", 20, 45);
 
     gameLoop();
 });
-
-
