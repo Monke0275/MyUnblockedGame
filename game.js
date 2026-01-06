@@ -13,7 +13,23 @@ window.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("resize", resizeCanvas);
 
     // ------------------ GAME VARIABLES ------------------
-    let player = { x: 0, y: 0, size: 40, speed: 7, oldX: 0, oldY: 0 };
+    let dashCooldown = 0;      // time before you can dash again
+    let dashDuration = 0;     // how long the dash lasts
+    let DASH_SPEED = 20;      // how fast the dash is
+    let DASH_TIME = 10;       // frames dash lasts
+    let DASH_COOLDOWN = 60;   // frames before next dash
+
+    let player = {
+    x: 0,
+    y: 0,
+    size: 40,
+    speed: 1.2,   // acceleration, not raw speed
+    vx: 0,        // velocity X
+    vy: 0,        // velocity Y
+    oldX: 0,
+    oldY: 0
+};
+
     let enemy = { x: 100, y: 100, size: 40, speed: 3 };
     let keys = {};
 
@@ -54,10 +70,24 @@ window.addEventListener("DOMContentLoaded", () => {
         if (gameState !== "playing") return;
 
         // ---- PLAYER MOVEMENT ----
-        if (keys["w"] || keys["ArrowUp"]) player.y -= player.speed;
-        if (keys["s"] || keys["ArrowDown"]) player.y += player.speed;
-        if (keys["a"] || keys["ArrowLeft"]) player.x -= player.speed;
-        if (keys["d"] || keys["ArrowRight"]) player.x += player.speed;
+        let currentSpeed = player.speed;
+
+// Dash active?
+if (dashDuration > 0) {
+    currentSpeed = DASH_SPEED;
+    dashDuration--;
+}
+
+// Dash cooldown
+if (dashCooldown > 0) {
+    dashCooldown--;
+}
+
+// Movement
+if (keys["w"] || keys["ArrowUp"]) player.y -= currentSpeed;
+if (keys["s"] || keys["ArrowDown"]) player.y += currentSpeed;
+if (keys["a"] || keys["ArrowLeft"]) player.x -= currentSpeed;
+if (keys["d"] || keys["ArrowRight"]) player.x += currentSpeed;
 
         // Keep player inside canvas
         if (player.x < 0) player.x = 0;
@@ -78,8 +108,13 @@ window.addEventListener("DOMContentLoaded", () => {
         player.oldX = player.x;
         player.oldY = player.y;
 
-        // Increase enemy speed over time
-        enemy.speed = 3 + Math.floor((performance.now() - startTime) / 10000);
+        let secondsAlive = (performance.now() - startTime) / 1000;
+
+// Speed ramps up faster over time
+enemy.speed = 3 + secondsAlive * 0.15;
+
+// HARD CAP so it doesn’t break the game
+if (enemy.speed > 15) enemy.speed = 15;
 
         // ---- COLLISION CHECK ----
         if (
@@ -129,20 +164,34 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Gameplay
     function drawGameplay() {
-        // Player
-        ctx.fillStyle = "blue";
-        ctx.fillRect(player.x, player.y, player.size, player.size);
+        // Player (glowing)
+ctx.save();
+ctx.shadowColor = "cyan";
+ctx.shadowBlur = 20;
+ctx.fillStyle = "#00aaff";
+ctx.fillRect(player.x, player.y, player.size, player.size);
+ctx.restore();
 
-        // Enemy
-        ctx.fillStyle = "red";
-        ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+        // Enemy (danger glow)
+ctx.save();
+ctx.shadowColor = "red";
+ctx.shadowBlur = 30;
+ctx.fillStyle = "#ff3333";
+ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+ctx.restore();
 
-        // Timer
-        let currentTime = Math.floor((performance.now() - startTime) / 1000);
-        ctx.fillStyle = "Black";
-        ctx.font = "30px Arial";
-        ctx.textAlign = "left";
-        ctx.fillText("Time: " + currentTime + "s", 20, 40);
+        let currentTime = Math.floor(secondsAlive);
+
+if (enemy.speed > 10) {
+    ctx.fillStyle = "red";   // danger!
+} else {
+    ctx.fillStyle = "black";
+}
+
+ctx.font = "bold 32px Arial";
+ctx.textAlign = "left";
+ctx.fillText("Time: " + currentTime + "s", 20, 45);
+
     }
 
     // Game Over Screen
@@ -207,4 +256,5 @@ window.addEventListener("DOMContentLoaded", () => {
 
     gameLoop();
 });
+
 
