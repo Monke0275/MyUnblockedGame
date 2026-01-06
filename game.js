@@ -1,3 +1,4 @@
+// Wait until HTML is loaded
 window.addEventListener("DOMContentLoaded", () => {
 
     // ------------------ CANVAS SETUP ------------------
@@ -12,59 +13,63 @@ window.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("resize", resizeCanvas);
 
     // ------------------ GAME VARIABLES ------------------
-    let dashCooldown = 0;
+    const FRICTION = 0.85;      // smooth momentum
+    const DASH_SPEED = 20;      // dash velocity
+    const DASH_TIME = 10;       // dash duration frames
+    const DASH_COOLDOWN = 60;   // dash cooldown frames
+
     let dashDuration = 0;
-    const DASH_SPEED = 20;
-    const DASH_TIME = 10;
-    const DASH_COOLDOWN = 60;
-    const FRICTION = 0.85; // smooth momentum
+    let dashCooldown = 0;
 
     let player = {
-        x: 0,
-        y: 0,
-        size: 40,
+        x: 0, y: 0, size: 40,
         speed: 1.2,
-        vx: 0,
-        vy: 0,
-        oldX: 0,
-        oldY: 0
+        vx: 0, vy: 0,
+        oldX: 0, oldY: 0
     };
 
     let enemy = { x: 100, y: 100, size: 40, speed: 3 };
-    let keys = {};
-    let gameState = "home"; // "home", "playing", "gameover"
-    let startTime = 0;
-    let elapsed = 0;
-    let secondsAlive = 0;
 
-    // ------------------ KEYBOARD INPUT ------------------
+    let keys = {};
+    let gameState = "home";   // "home", "playing", "gameover"
+    let startTime = 0;
+    let secondsAlive = 0;
+    let elapsed = 0;
+
+    // ------------------ INPUT ------------------
     document.addEventListener("keydown", e => keys[e.key] = true);
     document.addEventListener("keyup", e => keys[e.key] = false);
+
+    document.addEventListener("keydown", e => {
+        if (e.key === " " && dashCooldown === 0 && gameState === "playing") {
+            dashDuration = DASH_TIME;
+            dashCooldown = DASH_COOLDOWN;
+        }
+    });
 
     // ------------------ GAME FUNCTIONS ------------------
     function startGame() {
         player.x = canvas.width / 2 - player.size / 2;
         player.y = canvas.height / 2 - player.size / 2;
-        player.oldX = player.x;
-        player.oldY = player.y;
         player.vx = 0;
         player.vy = 0;
+        player.oldX = player.x;
+        player.oldY = player.y;
 
         enemy.x = Math.random() * (canvas.width - enemy.size);
         enemy.y = Math.random() * (canvas.height - enemy.size);
         enemy.speed = 3;
 
+        dashDuration = 0;
+        dashCooldown = 0;
+
         startTime = performance.now();
         secondsAlive = 0;
-        dashCooldown = 0;
-        dashDuration = 0;
 
         gameState = "playing";
     }
 
-    function restartGame() {
-        startGame();
-    }
+    function restartGame() { startGame(); }
 
     function update() {
         if (gameState !== "playing") return;
@@ -81,17 +86,15 @@ window.addEventListener("DOMContentLoaded", () => {
         if (dashCooldown > 0) dashCooldown--;
 
         // ---- PLAYER MOVEMENT ----
-        // Apply acceleration
         if (keys["w"] || keys["ArrowUp"]) player.vy -= currentSpeed;
         if (keys["s"] || keys["ArrowDown"]) player.vy += currentSpeed;
         if (keys["a"] || keys["ArrowLeft"]) player.vx -= currentSpeed;
         if (keys["d"] || keys["ArrowRight"]) player.vx += currentSpeed;
 
-        // Apply friction for momentum
+        // Momentum
         player.vx *= FRICTION;
         player.vy *= FRICTION;
 
-        // Update position
         player.x += player.vx;
         player.y += player.vy;
 
@@ -101,7 +104,7 @@ window.addEventListener("DOMContentLoaded", () => {
         if (player.x + player.size > canvas.width) player.x = canvas.width - player.size;
         if (player.y + player.size > canvas.height) player.y = canvas.height - player.size;
 
-        // ---- PREDICTIVE ENEMY AI ----
+        // ---- ENEMY AI (predictive) ----
         let predictedX = player.x + (player.x - player.oldX);
         let predictedY = player.y + (player.y - player.oldY);
 
@@ -113,7 +116,7 @@ window.addEventListener("DOMContentLoaded", () => {
         player.oldX = player.x;
         player.oldY = player.y;
 
-        // ---- ENEMY SPEED RAMP ----
+        // Enemy speed ramps
         enemy.speed = 3 + secondsAlive * 0.15;
         if (enemy.speed > 15) enemy.speed = 15;
 
@@ -156,7 +159,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     function drawGameplay() {
-        // Player with glow
+        // Player glow
         ctx.save();
         ctx.shadowColor = "cyan";
         ctx.shadowBlur = 20;
@@ -164,7 +167,7 @@ window.addEventListener("DOMContentLoaded", () => {
         ctx.fillRect(player.x, player.y, player.size, player.size);
         ctx.restore();
 
-        // Enemy with glow
+        // Enemy glow
         ctx.save();
         ctx.shadowColor = "red";
         ctx.shadowBlur = 30;
@@ -200,7 +203,7 @@ window.addEventListener("DOMContentLoaded", () => {
         ctx.fillText("RESTART", canvas.width / 2, canvas.height / 2 + 145);
     }
 
-    // ------------------ MOUSE INPUT ------------------
+    // ------------------ MOUSE CLICK ------------------
     canvas.addEventListener("click", (e) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -226,14 +229,6 @@ window.addEventListener("DOMContentLoaded", () => {
             ) {
                 restartGame();
             }
-        }
-    });
-
-    // ------------------ DASH INPUT ------------------
-    document.addEventListener("keydown", (e) => {
-        if (e.key === " " && dashCooldown === 0 && gameState === "playing") {
-            dashDuration = DASH_TIME;
-            dashCooldown = DASH_COOLDOWN;
         }
     });
 
