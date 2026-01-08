@@ -234,6 +234,7 @@ window.addEventListener("DOMContentLoaded", () => {
         ctx.fillText("Time Survived: "+elapsed+"s",canvas.width/2,canvas.height/2);
 
         // Leaderboard
+        loadLeaderboard();
         ctx.fillStyle="cyan";
         ctx.font="40px Arial";
         for(let i=0;i<leaderboard.length;i++){
@@ -280,3 +281,4 @@ window.addEventListener("DOMContentLoaded", () => {
     gameLoop();
 
 });
+
