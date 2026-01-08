@@ -1,11 +1,11 @@
 window.addEventListener("DOMContentLoaded", () => {
 
-    // ------------------ VARIABLES ------------------
+    //------------------ VARIABLES ------------------
     let leaderboard = [];
     let isNewRecord = false;
     let confetti = [];
 
-    // ------------------ CANVAS ------------------
+    //------------------ CANVAS ------------------
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
@@ -16,7 +16,7 @@ window.addEventListener("DOMContentLoaded", () => {
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    // ------------------ LEADERBOARD ------------------
+    //------------------ LEADERBOARD ------------------
     function loadLeaderboard() {
         const saved = localStorage.getItem("leaderboard");
         leaderboard = saved ? JSON.parse(saved) : [];
@@ -37,7 +37,7 @@ window.addEventListener("DOMContentLoaded", () => {
         saveLeaderboard();
     }
 
-    // ------------------ CONFETTI ------------------
+    //------------------ CONFETTI ------------------
     function spawnConfetti() {
         for(let i=0;i<200;i++){
             confetti.push({
@@ -61,11 +61,11 @@ window.addEventListener("DOMContentLoaded", () => {
             p.life--;
             ctx.fillStyle = p.color;
             ctx.fillRect(p.x,p.y,p.size,p.size);
-            if(p.life<=0) confetti.splice(i,1);
+            if(p.life <= 0) confetti.splice(i,1);
         }
     }
 
-    // ------------------ GAME VARIABLES ------------------
+    //------------------ GAME VARIABLES ------------------
     const FRICTION = 0.85;
     const DASH_SPEED = 20;
     const DASH_TIME = 10;
@@ -82,18 +82,18 @@ window.addEventListener("DOMContentLoaded", () => {
     let secondsAlive=0;
     let elapsed=0;
 
-    // ------------------ INPUT ------------------
-    document.addEventListener("keydown", e=> keys[e.key]=true);
-    document.addEventListener("keyup", e=> keys[e.key]=false);
+    //------------------ INPUT ------------------
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
 
     document.addEventListener("keydown", e=>{
-        if(e.key===" " && dashCooldown===0 && gameState==="playing"){
+        if(e.key === " " && dashCooldown===0 && gameState==="playing"){
             dashDuration = DASH_TIME;
             dashCooldown = DASH_COOLDOWN;
         }
     });
 
-    // ------------------ GAME FUNCTIONS ------------------
+    //------------------ GAME FUNCTIONS ------------------
     function startGame(){
         player.x = canvas.width/2 - player.size/2;
         player.y = canvas.height/2 - player.size/2;
@@ -111,113 +111,119 @@ window.addEventListener("DOMContentLoaded", () => {
         gameState="playing";
     }
 
-    function restartGame(){ startGame(); }
+    function restartGame(){ 
+        startGame(); 
+        isNewRecord=false;
+    }
 
     function update(){
-        if(gameState!=="playing") return;
+        if(gameState !== "playing") return;
 
         // TIMER
-        secondsAlive = (performance.now()-startTime)/1000;
+        secondsAlive = (performance.now() - startTime)/1000;
 
         // DASH
         let currentSpeed = player.speed;
-        if(dashDuration>0){ currentSpeed=DASH_SPEED; dashDuration--; }
+        if(dashDuration>0){ currentSpeed = DASH_SPEED; dashDuration--; }
         if(dashCooldown>0) dashCooldown--;
 
         // MOVEMENT
-        if(keys["w"] || keys["ArrowUp"]) player.vy-=currentSpeed;
-        if(keys["s"] || keys["ArrowDown"]) player.vy+=currentSpeed;
-        if(keys["a"] || keys["ArrowLeft"]) player.vx-=currentSpeed;
-        if(keys["d"] || keys["ArrowRight"]) player.vx+=currentSpeed;
+        if(keys["w"] || keys["ArrowUp"]) player.vy -= currentSpeed;
+        if(keys["s"] || keys["ArrowDown"]) player.vy += currentSpeed;
+        if(keys["a"] || keys["ArrowLeft"]) player.vx -= currentSpeed;
+        if(keys["d"] || keys["ArrowRight"]) player.vx += currentSpeed;
 
-        player.vx*=FRICTION;
-        player.vy*=FRICTION;
+        // MOMENTUM
+        player.vx *= FRICTION;
+        player.vy *= FRICTION;
 
-        player.x+=player.vx;
-        player.y+=player.vy;
+        player.x += player.vx;
+        player.y += player.vy;
 
         // BOUNDS
-        if(player.x<0) player.x=0;
-        if(player.y<0) player.y=0;
-        if(player.x+player.size>canvas.width) player.x=canvas.width-player.size;
-        if(player.y+player.size>canvas.height) player.y=canvas.height-player.size;
+        if(player.x < 0) player.x = 0;
+        if(player.y < 0) player.y = 0;
+        if(player.x + player.size > canvas.width) player.x = canvas.width - player.size;
+        if(player.y + player.size > canvas.height) player.y = canvas.height - player.size;
 
         // ENEMY AI
-        let predictedX = player.x+(player.x-player.oldX);
-        let predictedY = player.y+(player.y-player.oldY);
+        let predictedX = player.x + (player.x - player.oldX);
+        let predictedY = player.y + (player.y - player.oldY);
 
-        if(predictedX>enemy.x) enemy.x+=enemy.speed;
-        if(predictedX<enemy.x) enemy.x-=enemy.speed;
-        if(predictedY>enemy.y) enemy.y+=enemy.speed;
-        if(predictedY<enemy.y) enemy.y-=enemy.speed;
+        if(predictedX > enemy.x) enemy.x += enemy.speed;
+        if(predictedX < enemy.x) enemy.x -= enemy.speed;
+        if(predictedY > enemy.y) enemy.y += enemy.speed;
+        if(predictedY < enemy.y) enemy.y -= enemy.speed;
 
-        player.oldX=player.x;
-        player.oldY=player.y;
+        player.oldX = player.x;
+        player.oldY = player.y;
 
         // ENEMY SPEED RAMP
-        enemy.speed = 3+secondsAlive*0.15;
-        if(enemy.speed>15) enemy.speed=15;
+        enemy.speed = 3 + secondsAlive*0.15;
+        if(enemy.speed > 15) enemy.speed = 15;
 
         // COLLISION
-        if(player.x<enemy.x+enemy.size &&
-           player.x+player.size>enemy.x &&
-           player.y<enemy.y+enemy.size &&
-           player.y+player.size>enemy.y){
-            gameState="gameover";
+        if(player.x < enemy.x + enemy.size &&
+           player.x + player.size > enemy.x &&
+           player.y < enemy.y + enemy.size &&
+           player.y + player.size > enemy.y) {
+            
+            gameState = "gameover";
             elapsed = Math.floor(secondsAlive);
             updateLeaderboard(elapsed);
+            if(isNewRecord) spawnConfetti();
         }
     }
 
-    // ------------------ DRAW FUNCTIONS ------------------
+    //------------------ DRAW FUNCTIONS ------------------
     function draw(){
         ctx.clearRect(0,0,canvas.width,canvas.height);
 
-        if(gameState==="home") drawHomeScreen();
-        else if(gameState==="playing") drawGameplay();
-        else if(gameState==="gameover") drawGameOver();
+        if(gameState === "home") drawHomeScreen();
+        else if(gameState === "playing") drawGameplay();
+        else if(gameState === "gameover") drawGameOver();
 
         drawConfetti();
     }
 
     function drawHomeScreen(){
-        ctx.fillStyle="#111";
+        ctx.fillStyle = "#111";
         ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        ctx.fillStyle="cyan";
-        ctx.font="80px Arial";
-        ctx.textAlign="center";
+        ctx.fillStyle = "cyan";
+        ctx.font = "80px Arial";
+        ctx.textAlign = "center";
         ctx.fillText("UNBEATABLE GAME", canvas.width/2, canvas.height/2-100);
 
-        ctx.fillStyle="lime";
+        ctx.fillStyle = "lime";
         ctx.fillRect(canvas.width/2-150,canvas.height/2,300,100);
-        ctx.fillStyle="#000";
-        ctx.font="50px Arial";
+        ctx.fillStyle = "#000";
+        ctx.font = "50px Arial";
         ctx.fillText("START", canvas.width/2, canvas.height/2+65);
     }
 
     function drawGameplay(){
-        // Player
+        // PLAYER
         ctx.save();
-        ctx.shadowColor="cyan";
-        ctx.shadowBlur=20;
-        ctx.fillStyle="#00aaff";
+        ctx.shadowColor = "cyan";
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = "#00aaff";
         ctx.fillRect(player.x,player.y,player.size,player.size);
         ctx.restore();
 
-        // Enemy
+        // ENEMY
         ctx.save();
-        ctx.shadowColor="red";
-        ctx.shadowBlur=30;
-        ctx.fillStyle="#ff3333";
+        ctx.shadowColor = "red";
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = "#ff3333";
         ctx.fillRect(enemy.x,enemy.y,enemy.size,enemy.size);
         ctx.restore();
 
-        // Timer color based on danger
+        // TIMER
         ctx.fillStyle = (enemy.speed>10)?"red":"white";
-        ctx.font="bold 32px Arial";
-        ctx.textAlign="left";
-        ctx.fillText("Time: "+Math.floor(secondsAlive)+"s",20,45);
+        ctx.font = "bold 32px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText("Time: " + Math.floor(secondsAlive) + "s", 20, 45);
     }
 
     function drawGameOver(){
@@ -227,51 +233,51 @@ window.addEventListener("DOMContentLoaded", () => {
         ctx.fillStyle="yellow";
         ctx.font="80px Arial";
         ctx.textAlign="center";
-        ctx.fillText("GAME OVER",canvas.width/2,canvas.height/2-100);
+        ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2-100);
 
         ctx.fillStyle="white";
         ctx.font="50px Arial";
-        ctx.fillText("Time Survived: "+elapsed+"s",canvas.width/2,canvas.height/2);
+        ctx.fillText("Time Survived: "+elapsed+"s", canvas.width/2, canvas.height/2);
 
-        // Leaderboard
+        // LEADERBOARD
         loadLeaderboard();
-        ctx.fillStyle="cyan";
-        ctx.font="40px Arial";
-        for(let i=0;i<leaderboard.length;i++){
-            ctx.fillText(`${i+1}. ${leaderboard[i]}s`,canvas.width/2,canvas.height/2+60+i*40);
+        ctx.fillStyle = "cyan";
+        ctx.font = "40px Arial";
+        for(let i=0; i<leaderboard.length; i++){
+            ctx.fillText(`${i+1}. ${leaderboard[i]}s`, canvas.width/2, canvas.height/2+60 + i*50);
         }
 
-        // Restart button
-        ctx.fillStyle="lime";
-        ctx.fillRect(canvas.width/2-150,canvas.height/2+80+leaderboard.length*0,300,100);
-        ctx.fillStyle="#000";
-        ctx.font="50px Arial";
-        ctx.fillText("RESTART",canvas.width/2,canvas.height/2+145+leaderboard.length*0);
+        // RESTART BUTTON
+        ctx.fillStyle = "lime";
+        ctx.fillRect(canvas.width/2-150, canvas.height/2+80 + leaderboard.length*50, 300, 100);
+        ctx.fillStyle = "#000";
+        ctx.font = "50px Arial";
+        ctx.fillText("RESTART", canvas.width/2, canvas.height/2+145 + leaderboard.length*50);
     }
 
-    // ------------------ MOUSE ------------------
-    canvas.addEventListener("click",(e)=>{
+    //------------------ MOUSE ------------------
+    canvas.addEventListener("click", (e)=>{
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
         if(gameState==="home"){
-            if(mouseX>=canvas.width/2-150 && mouseX<=canvas.width/2+150 &&
-               mouseY>=canvas.height/2 && mouseY<=canvas.height/2+100){
+            if(mouseX >= canvas.width/2-150 && mouseX <= canvas.width/2+150 &&
+               mouseY >= canvas.height/2 && mouseY <= canvas.height/2+100){
                 startGame();
             }
         }
 
         if(gameState==="gameover"){
-            if(mouseX>=canvas.width/2-150 && mouseX<=canvas.width/2+150 &&
-               mouseY>=canvas.height/2+80 && mouseY<=canvas.height/2+180){
+            if(mouseX >= canvas.width/2-150 && mouseX <= canvas.width/2+150 &&
+               mouseY >= canvas.height/2+80 + leaderboard.length*50 &&
+               mouseY <= canvas.height/2+180 + leaderboard.length*50){
                 restartGame();
-                isNewRecord=false;
             }
         }
     });
 
-    // ------------------ GAME LOOP ------------------
+    //------------------ GAME LOOP ------------------
     function gameLoop(){
         update();
         draw();
@@ -281,4 +287,3 @@ window.addEventListener("DOMContentLoaded", () => {
     gameLoop();
 
 });
-
